@@ -1,0 +1,254 @@
+'--------------------------------------------------------------------------------
+' Date: 22/01/2018
+' Developer: marcio.marques.souza / Accenture BRDC - Recife
+'--------------------------------------------------------------------------------
+'
+Global g_HostSettleTime%
+Global g_szPassword$
+'
+Sub Main()
+'--------------------------------------------------------------------------------
+'
+    Dim Sessions As Object
+    Dim System As Object
+    Set System = CreateObject("EXTRA.System")
+    If (System Is Nothing) Then
+        MsgBox "Nao foi possível criar o objeto do sistema EXTRA. Parando a reproducao da macro."
+        Stop
+    End If
+    Set Sessions = System.Sessions
+'
+    If (Sessions Is Nothing) Then
+        MsgBox "Nao foi possível criar o objeto de colecao de sessoes. Parando a reproducao da macro."
+        Stop
+    End If
+'
+'--------------------------------------------------------------------------------
+'
+    g_HostSettleTime = 360
+'
+    OldSystemTimeout& = System.TimeoutValue
+    If (g_HostSettleTime > OldSystemTimeout) Then
+        System.TimeoutValue = g_HostSettleTime
+    End If
+'
+'--------------------------------------------------------------------------------
+'
+    Dim Sess0 As Object
+    Set Sess0 = System.ActiveSession
+'
+    If (Sess0 Is Nothing) Then
+        MsgBox "Nao foi possível criar o objeto sessao. Parando a reproducao da macro."
+        Stop
+    End If
+'
+    Dim Sess1 As Object
+    If Not Sess0.Visible Then
+    Set Sess0 = Sess1
+    End If
+    Sess0.Screen.WaitHostQuiet (g_HostSettleTime)
+'
+    Dim login, senha, ambiente, maquina, limite, semcomp, recente As Variant
+    Dim SomeString As String
+    Dim cont As Integer
+'
+    login = InputBox("Insira o login (obrigatorio): ", "LOGIN")
+    If login = vbNullString Then
+        MsgBox ("Você CANCELOU o processo... ou NAO informou o login!")
+        Stop
+    End If
+'
+    If Len(login) < 7 Or Len(login) > 7 Then
+        MsgBox ("Login MAIOR ou menor que o permitido!")
+    End If
+'
+    Do Until Len(login) = 7
+        login = InputBox("Insira o login (obrigatorio): ", "LOGIN")
+        If login = vbNullString Then
+            MsgBox ("Você CANCELOU o processo... ou NAO informou o login!")
+            Stop
+        End If
+'
+        If Len(login) < 7 Or Len(login) > 7 Then
+            MsgBox ("Login MAIOR ou menor que o permitido!")
+        End If
+    Loop
+'
+    senha = InputBox("Insira a senha (obrigatorio): ", "SENHA")
+    If senha = vbNullString Then
+        MsgBox ("Você CANCELOU o processo... ou NAO informou a senha!")
+        Stop
+    End If
+'
+    If Len(senha) < 8 Or Len(senha) > 8 Then
+        MsgBox ("Senha MAIOR ou menor que a permitida!")
+    End If
+'
+    Do Until Len(senha) = 8
+        senha = InputBox("Insira a senha (obrigatorio): ", "SENHA")
+        If senha = vbNullString Then
+            MsgBox ("Você CANCELOU o processo... ou NAO informou a senha!")
+            Stop
+        End If
+'
+        If Len(senha) < 8 Or Len(senha) > 8 Then
+            MsgBox ("Senha MAIOR ou menor que a permitida!")
+        End If
+    Loop
+'
+    ambiente = InputBox("Digite em qual ambiente deseja desprender o(s) componente(s): 1 = TU LOCAL | 2 = TU | 3 = TI", "AMBIENTE")
+    If ambiente = vbNullString Then
+        MsgBox ("Você CANCELOU o processo... ou NAO informou o ambiente!")
+        Stop
+    End If
+'
+    If ambiente <> 1 And ambiente <> 2 And ambiente <> 3 Then
+        MsgBox ("Ambiente incorreto. Digite um ambiente valido!")
+    End If
+'
+    Do Until ambiente = 1 Or ambiente = 2 Or ambiente = 3
+        ambiente = InputBox("Digite em qual ambiente deseja desprender o(s) componente(s): 1 = TU LOCAL | 2 = TU | 3 = TI", "AMBIENTE")
+        If ambiente = vbNullString Then
+            MsgBox ("Você CANCELOU o processo... ou NAO informou o ambiente!")
+            Stop
+        End If
+'
+        If ambiente <> 1 And ambiente <> 2 And ambiente <> 3 Then
+            MsgBox ("Ambiente incorreto. Digite um ambiente valido!")
+        End If
+    Loop
+'
+'-------------------------------------------------------------------------------'
+'                         PROCESSAMENTO INICIAL DA MACRO                        '
+'-------------------------------------------------------------------------------'
+'
+'   TU LOCAL
+    If ambiente = "1" Then
+        maquina = "2"
+        limite = "13"
+'   TU
+    ElseIf ambiente = "2" Then
+        maquina = "3"
+        limite = "14"
+'   TI
+    ElseIf ambiente = "3" Then
+        maquina = "4"
+        limite = "22"
+    End If
+'
+'-------------------------------------------------------------------------------'
+'                        PROCESSAMENTO PRINCIPAL DA MACRO                       '
+'-------------------------------------------------------------------------------'
+'
+    cont = 0
+    Do Until maquina = limite
+        Sess0.Screen.MoveTo 23, 14
+        Sess0.Screen.Sendkeys(maquina & "<Enter>")
+        Sess0.Screen.WaitHostQuiet(300)
+        SomeString = Sess0.Screen.GetString(22, 3, 2)
+        semcomp = "N"
+        recente = "S"
+        If SomeString = "Ne" Then
+            recente = "N"
+            Sess0.Screen.SendKeys (login & "<Tab>" & senha & "<Enter>")
+            Sess0.Screen.WaitHostQuiet (300)
+            SomeString = Sess0.Screen.GetString(23, 2, 2)
+            If SomeString = "??" Then
+                MsgBox ("Processamento encerrado. Login OU senha invalida(o)!")
+                Stop
+            End If
+            Sess0.Screen.Sendkeys("XXT0<Enter>")
+            Sess0.Screen.WaitHostQuiet(300)
+            SomeString = Sess0.Screen.GetString(5, 7, 2)
+            If SomeString = "ID" Then
+                Sess0.Screen.Sendkeys("T<Enter>")
+                Sess0.Screen.WaitHostQuiet(g_HostSettleTime)
+                SomeString = Sess0.Screen.GetString(1, 25, 2)
+                If SomeString <> "Tr" Then
+                    MsgBox ("Processamento encerrado. Erro desconhecido!")
+                    Stop
+                End If
+            Else
+                SomeString = Sess0.Screen.GetString(1, 25, 2)
+                If SomeString = "Tr" Then
+                    cont = cont + 1
+                    Sess0.Screen.Sendkeys("L<Enter>")
+                    Sess0.Screen.WaitHostQuiet(300)
+                    Sess0.Screen.Sendkeys("DISC<Enter>")
+                    Sess0.Screen.WaitHostQuiet(g_HostSettleTime)
+                    semcomp = "S"
+                End If
+            End If
+        ElseIf recente = "S" Then
+            Sess0.Screen.Sendkeys("XXT0<Enter>")
+            Sess0.Screen.WaitHostQuiet(300)
+        End If
+'
+        SomeString = Sess0.Screen.GetString(23, 2, 3)
+        If SomeString = "DFH" Then
+            MsgBox ("Processamento encerrado. Erro desconhecdo!")
+            Stop
+        End If
+'
+        If semcomp = "N" Then
+            Sess0.Screen.Sendkeys("L<Enter>")
+            Sess0.Screen.WaitHostQuiet(300)
+            Sess0.Screen.Sendkeys("N<Enter>")
+            Sess0.Screen.WaitHostQuiet(300)
+            Sess0.Screen.Sendkeys("DISC<Enter>")
+            Sess0.Screen.WaitHostQuiet(g_HostSettleTime)
+        End If
+'
+        SomeString = Sess0.Screen.GetString(23, 2, 3)
+        If SomeString = "DFH" Then
+            MsgBox ("Processamento encerrado. Erro desconhecdo!")
+            Stop
+        End If
+'
+        If limite = "13" Then
+            If maquina = "2" Then
+                maquina = "5"
+            ElseIf maquina = "5" Then
+                maquina = "8"
+            ElseIf maquina = "8" Then
+                maquina = "12"
+            Else
+                maquina = "13"
+            End If
+        ElseIf limite = "14" Then
+            If maquina = "3" Then
+                maquina = "6"
+            ElseIf maquina = "6" Then
+                maquina = "9"
+            ElseIf maquina = "9" Then
+                maquina = "13"
+            Else
+                maquina = "14"
+            End If
+        Else
+            If maquina = "4" Then
+                maquina = "7"
+            ElseIf maquina = "7" Then
+                maquina = "10"
+            ElseIf maquina = "10" Then
+                maquina = "14"
+            ElseIf maquina = "14" Then
+                maquina = "17"
+            ElseIf maquina = "17" Then
+                maquina = "19"
+            ElseIf maquina = "19" Then
+                maquina = "21"
+            Else
+                maquina = "22"
+            End If
+        End If
+    Loop
+'
+    If ((limite = 13 Or limite = 14) And cont = 4) or (limite = 22 And cont = 7) Then
+        MsgBox "Nenhum componente estava preso!"
+    Else
+        MsgBox "Componente(s) desprendido(s) com sucesso!"
+    End If
+'
+    System.TimeoutValue = OldSystemTimeout
+End Sub

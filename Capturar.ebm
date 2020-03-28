@@ -1,0 +1,192 @@
+'--------------------------------------------------------------------------------
+' Date: 09/02/2018
+' User: marcio.marques.souza
+'--------------------------------------------------------------------------------
+
+' Global variable declarations
+Option Explicit
+Global g_HostSettleTime%
+Global g_szPassword$
+
+Sub Main()
+'--------------------------------------------------------------------------------
+' Get the main system object
+        Dim szApplication$, szPackageID$
+        Dim iDone%, nRet%
+
+    Dim Sessions As Object
+    Dim System As Object
+        Dim OldSystemTimeout&
+
+    Set System = CreateObject("EXTRA.System")   ' Gets the system object
+    If (System is Nothing) Then
+        Msgbox "Could not create the EXTRA System object.  Stopping macro playback."
+        STOP
+    End If
+    Set Sessions = System.Sessions
+
+    If (Sessions is Nothing) Then
+        Msgbox "Could not create the Sessions collection object.  Stopping macro playback."
+        STOP
+    End If
+
+
+'--------------------------------------------------------------------------------
+' Set the default wait timeout value
+    g_HostSettleTime = 70 ' milliseconds
+
+    OldSystemTimeout& = System.TimeoutValue
+    If (g_HostSettleTime > OldSystemTimeout) Then
+        System.TimeoutValue = g_HostSettleTime
+    End If
+
+' Get the necessary Session Object
+    Dim Sess0 As Object
+    Set Sess0 = System.ActiveSession
+    If (Sess0 is Nothing) Then
+        Msgbox "Could not create the Session object.  Stopping macro playback."
+        STOP
+    End If
+    If Not Sess0.Visible Then Sess0.Visible = TRUE
+        Dim bResp As Integer
+        bResp = false
+        do until bResp
+            bResp = Sess0.Screen.WaitHostQuiet(g_HostSettleTime)
+        loop
+
+' This section of code contains the recorded events
+
+        Dim e As Variant
+
+        Dim nFileNumPackage As Integer
+        Dim nFileNumResult As Integer
+        Dim sDir As String
+        Dim MyArea As Object
+        Dim sSearch As String * 60
+        Dim sDataSet As String * 44
+        Dim sPackage As String * 56
+        Dim sProgram As String
+        Dim sMsg As String
+        Dim nLine As Integer
+        Dim sMacro As String
+        Dim sArq As String
+        Dim nSeq As Integer
+        Dim sNome As String
+        Dim sTipo As String
+        Dim sFlag As String
+        Dim sFlagnome As String
+        Dim cont As Integer
+        Dim cont2 As Integer
+        Dim cont3 As Integer
+
+        nFileNumPackage = FreeFile
+                sDir = "C:\Temp\"
+'
+        Sess0.Screen.Sendkeys("<Home>TOP<Enter>")
+        Sess0.Screen.WaitHostQuiet(100)
+'
+        If Sess0.Screen.GetString(32, 6, 2) <> "27" Then
+            Sess0.Screen.Sendkeys("<Home>EDSET<Enter>")
+            Sess0.Screen.WaitHostQuiet(30)
+            Sess0.Screen.Sendkeys("<TAB><TAB><TAB><TAB>   <Pf3>")
+            Sess0.Screen.WaitHostQuiet(30)
+            Sess0.Screen.Sendkeys("<Home>")
+        End If
+'
+        If Sess0.Screen.GetString(5, 2, 1) = "=" Then
+            Sess0.Screen.Sendkeys("<Home>COLS<Enter>")
+            Sess0.Screen.WaitHostQuiet(30)
+        End If
+'
+    If Sess0.Screen.GetString(6, 2, 2) = "==" Or Sess0.Screen.GetString(6, 2, 2) <> "00" Then
+            Sess0.Screen.Sendkeys("<Home>RES<Enter>")
+            Sess0.Screen.WaitHostQuiet(30)
+    End If
+'
+        sFlagnome = "N"
+        cont = 26
+        Do Until cont > 50 Or sFlagnome = "S"
+            If Sess0.Screen.GetString(3, cont, 1) = "(" Then
+                cont2 = cont
+                cont2 = cont2 + 1
+                cont3 = cont2
+                cont3 = cont3 + 4
+                sNome = Sess0.Screen.GetString(3, cont2, 8)
+                e = Sess0.Screen.GetString(3, cont3, 1)
+                sFlagnome = "S"
+            End If
+            cont = cont + 1
+        Loop
+'
+    If sFlagnome = "N" Then
+       If Sess0.Screen.GetString(3, 2, 4) = "EDIT" Then
+           sNome = Sess0.Screen.GetString(3, 46, 8)
+           e = Sess0.Screen.GetString(3, 50, 1)
+       Else
+           sNome = "ARQUIVO"
+           e = "X"
+       End If
+    End If
+'
+        If e = "B" or e = "W" Then
+            sTipo = ".cpy"
+        ElseIf e = "1" or e = "2" or e = "3" or e = "4" Then
+            sTipo = ".cbl"
+        Else
+            sTipo = ".txt"
+        End If
+
+        nSeq = 1
+        sFlag = "N"
+
+         For nSeq = 1 to 1
+            Do
+                 For nLine = 5 to 32
+                        sProgram = Sess0.Screen.GetString(nLine, 9, 72)
+                        If sProgram = "**************************** Bottom of Data ****************************" Then
+                            sFlag = "S"
+                            nLine = 32
+                        Else
+                            nFileNumResult  = FreeFile
+                            If nSeq = 1 Then
+                            Open sDir + sNome + sTipo For Append As #nFileNumResult
+                            else
+                            Open sDir + sNome + "b" + sTipo For Append As #nFileNumResult
+                            End If
+                            if sProgram = "***************************** Top of Data ******************************" Then
+                                Sess0.Screen.MoveTo 6, 9
+                                Sess0.Screen.Sendkeys("<Pf8>")
+                                Sess0.Screen.WaitHostQuiet(30)
+                                sProgram = Sess0.Screen.GetString(nLine, 9, 72)
+                                Sess0.Screen.Sendkeys("<Home>")
+                                Print #nFileNumResult , sProgram
+                            elseif sProgram <> "**************************** Bottom of Data ****************************" and sFlag = "N" and sProgram <> "  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ." and sProgram <> " ===>                                                  Scroll ===> CSR  " Then
+                                Print #nFileNumResult , sProgram
+                            end if
+                            if sProgram = "  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ." or sProgram = " ===>                                                  Scroll ===> CSR  " Then
+                                MsgBox ("Processamento encerrado. A tela nao esta configurada corretamente!")
+                                Close #nFileNumPackage
+                                nLine = 32
+                                Stop
+                            end if
+                        End If
+                        Close #nFileNumResult
+                 Next
+                 Set MyArea = Sess0.Screen.Search("Bottom")
+                 If MyArea.Top = -1 Then
+                    Sess0.Screen.Sendkeys("<Pf8>")
+                    bResp = false
+                    do until bResp
+                        bResp = Sess0.Screen.WaitHostQuiet(g_HostSettleTime)
+                    loop
+                 End If
+            Loop Until MyArea.Top <> -1
+        Next
+
+        System.TimeoutValue = OldSystemTimeout
+
+        Close #nFileNumPackage
+        Sess0.Screen.Sendkeys("<Home>TOP<Enter>")
+        Sess0.Screen.WaitHostQuiet(30)
+        msgbox "Listagem Finalizada!"
+End Sub
