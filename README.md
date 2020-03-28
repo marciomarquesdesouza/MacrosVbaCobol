@@ -1,6 +1,4 @@
 # MacrosVbaCobol
-Macros in VBA to automate Mainframe process
-
 Macros criadas em 2017/2018 na linguagem VBA para automatizar processos repetitivos no ambiente mainframe (plataforma EXTRA!).
 
 São 3 macros: Capturar, Prender e Desprender.
